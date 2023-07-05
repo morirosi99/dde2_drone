@@ -2,8 +2,12 @@
 #include <Arduino.h>
 #include "Wire.h"
 #include "I2Cdev.h"
+#include "motors.h"
+
+motors::Motors m;
 
 //Declaring some global variables
+boolean motorsON = false;                                              // Set true to turn motors on
 int gyro_x, gyro_y, gyro_z;
 long acc_x, acc_y, acc_z, acc_total_vector;
 int temperature;
@@ -54,6 +58,12 @@ void read_mpu_6050_data(){                                             //Subrout
 void setup() {                                                         // Setup() calculates the offset of the gyro (x,y,z) which are used for calibration
   Wire.begin();
   Serial.begin(115200);
+
+  if (motorsON){
+    m.attach();                                                          // Attach the motors
+    m.startup();                                                         // Power the motors, should not start the motors because min speed is 1050   
+  }
+                                                           
   setup_mpu_6050_registers();
 
     for (int cal_int = 0; cal_int < 2000 ; cal_int ++){                //Run this code 2000 times
@@ -66,7 +76,12 @@ void setup() {                                                         // Setup(
   gyro_x_cal /= 2000;                                                  //Divide the gyro_x_cal variable by 2000 to get the avarage offset
   gyro_y_cal /= 2000;                                                  //Divide the gyro_y_cal variable by 2000 to get the avarage offset
   gyro_z_cal /= 2000;
-  delay(20);  
+  
+  delay(10000);                                                        // Wait 10 sec
+  
+  if (motorsON){
+    m.setThrust(1050);                                                 // Start the motors
+  }                                                 
 }
 
 int gyro_roll;
@@ -99,9 +114,9 @@ void loop(){
 
   //Gyro angle calculations
   //0.0000611 = 1 / (250Hz / 65.5)
-  angle_pitch += gyro_pitch * 0.0000611;                                    //Calculate the traveled pitch angle and add this to the angle_pitch variable.
   angle_roll += gyro_roll * 0.0000611;                                      //Calculate the traveled roll angle and add this to the angle_roll variable.
-
+  angle_pitch += gyro_pitch * 0.0000611;                                    //Calculate the traveled pitch angle and add this to the angle_pitch variable.
+ 
   //0.000001066 = 0.0000611 * (3.142(PI) / 180degr) The Arduino sin function is in radian
   angle_pitch -= angle_roll * sin(gyro_yaw * 0.000001066);                  //If the IMU has yawed transfer the roll angle to the pitch angel.
   angle_roll += angle_pitch * sin(gyro_yaw * 0.000001066);                  //If the IMU has yawed transfer the pitch angle to the roll angel.
@@ -109,31 +124,37 @@ void loop(){
   //Accelerometer angle calculations
   acc_total_vector = sqrt((acc_x*acc_x)+(acc_y*acc_y)+(acc_z*acc_z));       //Calculate the total accelerometer vector.
   
-  if(abs(acc_y) < acc_total_vector){                                        //Prevent the asin function to produce a NaN
-    angle_pitch_acc = asin((float)acc_y/acc_total_vector)* 57.296;          //Calculate the pitch angle.
-  }
   if(abs(acc_x) < acc_total_vector){                                        //Prevent the asin function to produce a NaN
     angle_roll_acc = asin((float)acc_x/acc_total_vector)* -57.296;          //Calculate the roll angle.
   }
+
+  if(abs(acc_y) < acc_total_vector){                                        //Prevent the asin function to produce a NaN
+    angle_pitch_acc = asin((float)acc_y/acc_total_vector)* 57.296;          //Calculate the pitch angle.
+  }
+
    
   // MANUAL Calibration (instead of void setup calibration): Place the MPU-6050 spirit level and note the values in the following two lines for calibration.
   // angle_pitch_acc -= 8.18;                                                  //Accelerometer calibration value for pitch.
   // angle_roll_acc -= 4.6;                                                    //Accelerometer calibration value for roll.
 
-  angle_pitch = angle_pitch * 0.9996 + angle_pitch_acc * 0.0004;            //Correct the drift of the gyro pitch angle with the accelerometer pitch angle.
   angle_roll = angle_roll * 0.9996 + angle_roll_acc * 0.0004;               //Correct the drift of the gyro roll angle with the accelerometer roll angle.
-
-  pitch_level_adjust = angle_pitch * 15 - 92.81;                            //Calculate the pitch angle correction
+  angle_pitch = angle_pitch * 0.9996 + angle_pitch_acc * 0.0004;            //Correct the drift of the gyro pitch angle with the accelerometer pitch angle.
+ 
   roll_level_adjust = angle_roll * 15 + 224.88;                             //Calculate the roll angle correction
-
-  Serial.print(pitch_level_adjust);
-  Serial.print(";  ");
+  pitch_level_adjust = angle_pitch * 15 - 92.81;                            //Calculate the pitch angle correction
+ 
   Serial.print(roll_level_adjust);
+  Serial.print(";  ");  
+  Serial.print(pitch_level_adjust);
   Serial.print(";  ");
   Serial.print(gyro_yaw_input);
   Serial.print("\n");
 
+  if (motorsON){
+    //CHECK and UNDERSTAND functionality first
+    //m.setByPID(pitch, roll, yaw)                                          // Sets the thrust of the motors according to the calculated error                                                               
+  }
+
   counter++;
 }
-
 
