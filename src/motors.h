@@ -35,7 +35,7 @@ namespace motors {
 
         bool shuttedDown = true;
 
-        const int maxPIDContribution = 200;
+        const int maxPIDContribution = 30;
         const int minThrust = 1050;
         const int maxThrust = 1500;
 

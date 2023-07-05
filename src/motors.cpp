@@ -10,7 +10,7 @@
 namespace motors {
     void Motors::startup() {
         shuttedDown = false;
-        forceSetThrust(1000);
+        forceSetThrust(1050);
     }
 
     void Motors::shutdown() {
@@ -41,8 +41,8 @@ namespace motors {
     void Motors::setByPID(float pitch, float roll, float yaw) {
 
         // PLEASE CHECK !!!
-        int fr = int(float(thrust) + pitch + roll + yaw); // front right  CW
-        int fl = int(float(thrust) + pitch - roll - yaw); // front left  CCW
+        int fr = int(float(thrust) + pitch + roll + yaw); // front right  CCW
+        int fl = int(float(thrust) + pitch - roll - yaw); // front left  CW
         int br = int(float(thrust) - pitch + roll + yaw); // back right   CW
         int bl = int(float(thrust) - pitch - roll - yaw); // back left   CCW
 
@@ -125,105 +125,3 @@ namespace motors {
         shuttedDown = false;
     }
 };
-
-//void setFront(int t, bool reset = true) {
-//        t = checkThrust(t);
-//
-//        FR.writeMicroseconds(t);
-//        FL.writeMicroseconds(t);
-//
-//        // reset other motors
-//        if (reset) {
-//            BR.writeMicroseconds(thrust);
-//            BL.writeMicroseconds(thrust);
-//        }
-//
-//        Serial.print("Speed_FR:");
-//        Serial.print(t);
-//        Serial.print(",Speed_BR:");
-//        Serial.print(thrust);
-//        Serial.print(",Speed_BL:");
-//        Serial.print(thrust);
-//        Serial.print(",Speed_FL:");
-//        Serial.println(t);
-//
-//    }
-//
-//    void setBack(int t, bool reset = true) {
-//        t = checkThrust(t);
-//
-//        BR.writeMicroseconds(t);
-//        BL.writeMicroseconds(t);
-//
-//        // reset other motors
-//        if (reset) {
-//            FR.writeMicroseconds(thrust);
-//            FL.writeMicroseconds(thrust);
-//        }
-//        Serial.print("Speed_FR:");
-//        Serial.print(thrust);
-//        Serial.print(",Speed_BR:");
-//        Serial.print(t);
-//        Serial.print(",Speed_BL:");
-//        Serial.print(t);
-//        Serial.print(",Speed_FL:");
-//        Serial.println(thrust);
-//    }
-//
-//    void setLeft(int t, bool reset = true) {
-//        t = checkThrust(t);
-//
-//        FL.writeMicroseconds(t);
-//        BL.writeMicroseconds(t);
-//
-//        // reset other motors
-//        if (reset) {
-//            FR.writeMicroseconds(thrust);
-//            BR.writeMicroseconds(thrust);
-//        }
-//        Serial.print("Speed_FR:");
-//        Serial.print(thrust);
-//        Serial.print(",Speed_BR:");
-//        Serial.print(thrust);
-//        Serial.print(",Speed_BL:");
-//        Serial.print(t);
-//        Serial.print(",Speed_FL:");
-//        Serial.println(t);
-//    }
-//
-//    void setRight(int t, bool reset = true) {
-//        t = checkThrust(t);
-//
-//        FR.writeMicroseconds(t);
-//        BR.writeMicroseconds(t);
-//
-//        // reset other motors
-//        if (reset) {
-//            FL.writeMicroseconds(thrust);
-//            BL.writeMicroseconds(thrust);
-//        }
-//        Serial.print("Speed_FR:");
-//        Serial.print(t);
-//        Serial.print(",Speed_BR:");
-//        Serial.print(t);
-//        Serial.print(",Speed_BL:");
-//        Serial.print(thrust);
-//        Serial.print(",Speed_FL:");
-//        Serial.println(thrust);
-//    }
-
-
-//    void moveX(int t) {
-//        setFront(calcSpeedThrust(t), false);
-//        setBack(calcSpeedThrust(-t), false);
-//    }
-//
-//    void moveY(int speed) {
-//        setLeft(calcSpeedThrust(speed), false);
-//        setRight(calcSpeedThrust(-speed), false);
-//    }
-//
-//    void turn(int t) {
-//        setLeft(calcSpeedThrust(t), false);
-//        setRight(calcSpeedThrust(-t), false);
-//    }
