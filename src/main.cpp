@@ -12,6 +12,7 @@ int gyro_x, gyro_y, gyro_z;
 long acc_x, acc_y, acc_z, acc_total_vector;
 int temperature;
 long gyro_x_cal, gyro_y_cal, gyro_z_cal;
+long acc_x_cal, acc_y_cal, acc_z_cal;
 long loop_timer;
 int lcd_loop_counter;
 float angle_pitch, angle_roll;
@@ -71,11 +72,17 @@ void setup() {                                                         // Setup(
     gyro_x_cal += gyro_x;                                              //Add the gyro x-axis offset to the gyro_x_cal variable
     gyro_y_cal += gyro_y;                                              //Add the gyro y-axis offset to the gyro_y_cal variable
     gyro_z_cal += gyro_z;                                              //Add the gyro z-axis offset to the gyro_z_cal variable
+    acc_x_cal += acc_x;
+    acc_y_cal += acc_y;
+    acc_z_cal += acc_z; 
     delay(3);                                                          //Delay 3us to simulate the 250Hz program loop
   }
   gyro_x_cal /= 2000;                                                  //Divide the gyro_x_cal variable by 2000 to get the avarage offset
   gyro_y_cal /= 2000;                                                  //Divide the gyro_y_cal variable by 2000 to get the avarage offset
   gyro_z_cal /= 2000;
+  acc_x_cal /= 2000;
+  acc_y_cal /= 2000;
+  acc_z_cal /= 2000;
   
   delay(10000);                                                        // Wait 10 sec
   
@@ -102,9 +109,13 @@ void loop(){
   gyro_pitch = gyro_y; 
   gyro_yaw = gyro_z;     
 
-  gyro_roll -= gyro_x_cal;                                                  // Add the offsets values of void setup()
+  gyro_roll -= gyro_x_cal;                                                  // Use the offsets calculated by the calibration in void setup()
   gyro_pitch -= gyro_y_cal; 
   gyro_yaw -= gyro_z_cal;
+
+  acc_x -= acc_x_cal;                                                       // Use the offsets calculated by the calibration in void setup()
+  acc_y -= acc_y_cal;
+  acc_z -= acc_z_cal;
 
 
   //65.5 = 1 deg/sec (check the datasheet of the MPU-6050 for more information).
@@ -131,7 +142,6 @@ void loop(){
   if(abs(acc_y) < acc_total_vector){                                        //Prevent the asin function to produce a NaN
     angle_pitch_acc = asin((float)acc_y/acc_total_vector)* 57.296;          //Calculate the pitch angle.
   }
-
    
   // MANUAL Calibration (instead of void setup calibration): Place the MPU-6050 spirit level and note the values in the following two lines for calibration.
   // angle_pitch_acc -= 8.18;                                                  //Accelerometer calibration value for pitch.
