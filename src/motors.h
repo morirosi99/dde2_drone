@@ -37,7 +37,7 @@ namespace motors {
 
         const int maxPIDContribution = 30;
         const int minThrust = 1050;
-        const int maxThrust = 1500;
+        const int maxThrust = 1100;
 
         Servo FR;
         Servo FL;

@@ -45,14 +45,14 @@ namespace pid {
     }
 
     void PIDCalc::setPID(const String &input) {
-        int comma1 = input.indexOf(';');
-        int comma2 = input.indexOf(';', comma1 + 1);
+        int comma1 = input.indexOf(";");
+        int comma2 = input.indexOf(";", comma1 + 1);
         int comma3 = input.indexOf(";", comma2 + 1);
         int comma4 = input.indexOf(";", comma3 + 1);
         String X = input.substring(0, comma1);
         String Y = input.substring(comma1 + 1, comma2);
-        String Z = input.substring(comma2 + 1);
-        String thrust = input.substring(comma3 + 1);
+        String Z = input.substring(comma2 + 1, comma3);
+        String thrust = input.substring(comma3 + 1, comma4);
         String enabled = input.substring(comma4 + 1);
         X.replace(",", ".");
         Y.replace(",", ".");
@@ -63,7 +63,7 @@ namespace pid {
         Serial.println(Y);
         Serial.println(Z);
 
-        bool en = enabled.toInt() > 0;
+        bool en = true; //enabled.toInt() > 0;
 
 
         pid_roll.integral = 0;
@@ -73,7 +73,7 @@ namespace pid {
         Kp = X.toFloat();
         Ki = Y.toFloat();
         Kd = Z.toFloat();
-
+/*
         int t = int(thrust.toInt());
 
         if (en) {
@@ -81,7 +81,7 @@ namespace pid {
             motors->setThrust(t);
         } else {
             motors->shutdown();
-        }
+        }*/
 
 
 

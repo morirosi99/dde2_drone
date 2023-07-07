@@ -7,6 +7,7 @@
 
 motors::Motors m;
 pid::PIDCalc calcPID(&m);
+
 unsigned long timer = 0;
 
 //Declaring some global variables
@@ -59,8 +60,9 @@ void read_mpu_6050_data(){                                             //Subrout
 }
 
 void setup() {                                                         // Setup() calculates the offset of the gyro (x,y,z) which are used for calibration
+  Serial.begin(9600);
   Wire.begin();
-  Serial.begin(115200);
+  Wire.setClock(400000);
   setup_mpu_6050_registers();
 
   Serial.print("Calibration of the Gyro");
@@ -83,24 +85,24 @@ void setup() {                                                         // Setup(
   acc_z_cal /= 2000;
   Serial.print("\n");
   Serial.print("Gyro Calibrated");
-  delay(20);  
+  delay(200);  
 
   Serial.print("\n");
   Serial.print("Start Motors");
+  delay(200);
   m.attach();
   m.startup();
 
-  calcPID.setPoint(0.0, 0.0, 0.0);
 
   delay(1000);
 
-    while (Serial.available() <= 0) {
+    /*while (Serial.available() <= 0) {
         Serial.print(".");
         delay(500);
     }
-    Serial.println("");
+    Serial.println("");*/
 
-    m.setThrust(1080);
+  m.setThrust(1080);
 }
 
 int gyro_roll;

@@ -10,7 +10,7 @@
 namespace motors {
     void Motors::startup() {
         shuttedDown = false;
-        forceSetThrust(1080);
+        forceSetThrust(1050);
     }
 
     void Motors::shutdown() {
@@ -82,7 +82,7 @@ namespace motors {
 
     int Motors::checkThrust(int t) const {
         if (t > maxThrust) { t = maxThrust; }
-        else if (t < minThrust) t = minThrust;
+        else if (t < minThrust) {t = minThrust;}
 
         return t;
     }
