@@ -10,7 +10,7 @@
 namespace motors {
     void Motors::startup() {
         shuttedDown = false;
-        forceSetThrust(1050);
+        forceSetThrust(1080);
     }
 
     void Motors::shutdown() {
@@ -41,10 +41,10 @@ namespace motors {
     void Motors::setByPID(float pitch, float roll, float yaw) {
 
         // PLEASE CHECK !!!
-        int fr = int(float(thrust) + pitch + roll + yaw); // front right  CCW
-        int fl = int(float(thrust) + pitch - roll - yaw); // front left  CW
-        int br = int(float(thrust) - pitch + roll + yaw); // back right   CW
-        int bl = int(float(thrust) - pitch - roll - yaw); // back left   CCW
+        int fr = int(float(thrust) + pitch - roll + yaw); // front right  CCW
+        int fl = int(float(thrust) + pitch + roll - yaw); // front left  CW
+        int br = int(float(thrust) - pitch - roll + yaw); // back right   CW
+        int bl = int(float(thrust) - pitch + roll - yaw); // back left   CCW
 
         fr = checkMaxContribution(fr);
         fl = checkMaxContribution(fl);

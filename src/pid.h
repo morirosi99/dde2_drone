@@ -52,8 +52,8 @@ namespace pid {
 
         void resetAverage();
         motors::Motors* motors;
-        float Kp = 0.3;
-        float Ki = 0.0;
+        float Kp = 0.8;
+        float Ki = 0.001;
         float Kd = 0.2;
 
         int accumulatedIters = 0;

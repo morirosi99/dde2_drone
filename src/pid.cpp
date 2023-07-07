@@ -26,7 +26,7 @@ namespace pid {
     }
 
     void PID::updateError() {
-        error = point - input;
+        error = input;
     }
 
     void PIDCalc::setPoint(float x, float y, float z) {
@@ -125,13 +125,12 @@ namespace pid {
         pid_roll.input = roll;
         pid_pitch.input = pitch;
         pid_yaw.input = yaw;
-        setPoint(pid_roll.input, pid_pitch.input, pid_yaw.input);
 
 #ifdef DEBUG
-        Serial.print("IPITCH:");
-        Serial.print(pid_pitch.input);
         Serial.print(",IROLL:");
         Serial.print(pid_roll.input);
+        Serial.print("IPITCH:");
+        Serial.print(pid_pitch.input);
         Serial.print(",IYAW:");
         Serial.println(pid_yaw.input);
 #endif
@@ -164,10 +163,10 @@ namespace pid {
 
 
 #ifdef DEBUG
-        Serial.print("PITCH:");
-        Serial.print(pid_pitch.error);
         Serial.print(",ROLL:");
         Serial.print(pid_roll.error);
+        Serial.print("PITCH:");
+        Serial.print(pid_pitch.error);
         Serial.print(",YAW:");
         Serial.println(pid_yaw.error);
 #endif
