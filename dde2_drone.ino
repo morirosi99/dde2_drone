@@ -58,7 +58,7 @@ Servo fl_prop;
 Servo br_prop;
 Servo bl_prop;
 
-float thrust = 1100;
+float thrust = 1150;
 
 float fr_contrib, br_contrib, fl_contrib, bl_contrib;
 
@@ -110,7 +110,7 @@ void setup_mpu_6050_registers(){
 
 void pid_update(){
 
-  error_pitch = 0; //angle_pitch_output;
+  error_pitch = angle_pitch_output;
   integral_pitch += error_pitch; 
   derivative_pitch = (error_pitch - lastError_pitch)/elapsedTime;
   lastError_pitch = error_pitch;
@@ -121,12 +121,12 @@ void pid_update(){
   Serial.print(", ");
   Serial.println(derivative_pitch);*/
 
-  error_roll = 0; //angle_roll_output;
+  error_roll = angle_roll_output;
   integral_roll += error_roll;
   derivative_roll = (error_roll - lastError_roll)/elapsedTime;
   lastError_roll = error_roll;
 
-  error_yaw = 0; //angle_yaw;
+  error_yaw = angle_yaw;
   integral_yaw += error_yaw;
   derivative_yaw = (error_yaw - lastError_yaw)/elapsedTime;
   lastError_yaw = error_yaw;
@@ -399,7 +399,7 @@ void loop(){
 
   if (counter%5 == 0) // every 20ms
   {
-  motor_set_thrust(fr_speed, fl_speed, br_speed, bl_speed);
+  motor_set_thrust(static_cast<int>(fr_speed), static_cast<int>(fl_speed), static_cast<int>(br_speed), static_cast<int>(bl_speed));
   }
   
   if (counter&100 == 0) // every 400ms
