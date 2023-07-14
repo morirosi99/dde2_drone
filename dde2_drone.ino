@@ -65,7 +65,7 @@ float fr_speed, br_speed, fl_speed, bl_speed;
 
 
 //int angle_pitch_buffer, angle_roll_buffer;
-boolean set_gyro_angles;
+bool set_gyro_angles;
 float angle_roll_cal, angle_pitch_cal;
 float angle_pitch_output, angle_roll_output;
 
@@ -150,46 +150,67 @@ void pid_output() {
   bl_speed = check_max_min_speed(bl_contrib);
 }
 
-void set_pid_constants() {
+void setPID(const String &input) {
+  // Separate input
+  int pos1 = input.indexOf(';');
+  int pos2 = input.indexOf(';', pos1 + 1);
 
+  // Extrahiere die einzelnen Werte
+  String kpStr = input.substring(0, pos1);
+  String kiStr = input.substring(pos1 + 1, pos2);
+  String kdStr = input.substring(pos2 + 1);
+
+  // Konvertiere die Werte in Floats
+  Kp = kpStr.toFloat();
+  Ki = kiStr.toFloat();
+  Kd = kdStr.toFloat();
+
+  Serial.println("Kp: " + String(Kp));
+  Serial.println("Ki: " + String(Ki));
+  Serial.println("Kd: " + String(Kd));
+  Serial.println();
+
+  bluetoothSerial.println("Kp: " + String(Kp));
+  bluetoothSerial.println("Ki: " + String(Ki));
+  bluetoothSerial.println("Kd: " + String(Kd));
+  bluetoothSerial.println();
+}
+
+void set_pid_constants() {
   Serial.println("Please set PID Constants (Kp;Ki;Kd)");
   bluetoothSerial.println("Please set PID Constants (Kp;Ki;Kd)");
   check = true;
-
-  while (check){
-    if (Serial.available() > 0) {
-
-      
-      String input = Serial.readString();
-      Serial.println();
-
-      // Separate input
-      int pos1 = input.indexOf(';');
-      int pos2 = input.indexOf(';', pos1 + 1);
-
-      // Extrahiere die einzelnen Werte
-      String kpStr = input.substring(0, pos1);
-      String kiStr = input.substring(pos1 + 1, pos2);
-      String kdStr = input.substring(pos2 + 1);
-
-      // Konvertiere die Werte in Floats
-      Kp = kpStr.toFloat();
-      Ki = kiStr.toFloat();
-      Kd = kdStr.toFloat();
-
-      Serial.println("Kp: " + String(Kp));
-      Serial.println("Ki: " + String(Ki));
-      Serial.println("Kd: " + String(Kd));
-      Serial.println();
-
-      bluetoothSerial.println("Kp: " + String(Kp));
-      bluetoothSerial.println("Ki: " + String(Ki));
-      bluetoothSerial.println("Kd: " + String(Kd));
-      bluetoothSerial.println();
-
+  String input;
+  while(check){
+    if (Serial.available() || bluetoothSerial.available())
+    {
+      if (Serial.available() && !bluetoothSerial.available())
+        {
+          input = Serial.readString();
+          Serial.println();
+          }
+      else if (bluetoothSerial.available())
+          {
+          input = bluetoothSerial.readString();
+          bluetoothSerial.println();
+          }
+      setPID(input);
       check = false;
     }
   }
+}
+
+bool check_PID() {
+  if (bluetoothSerial.available())
+  {
+    String input = bluetoothSerial.readString();
+    //Serial.print(input);
+    bluetoothSerial.println();
+    setPID(input);
+    return true;
+  }
+  else
+  {return false;}
 }
 
 void motor_startup(){
@@ -269,8 +290,10 @@ void setup() {
   // Gyro Calibration
   Serial.println("Start Gyro Calibration");
   Serial.println();
+  bluetoothSerial.println("Start Gyro Calibration");
+  bluetoothSerial.println();
   
-  for (int cal_int = 0; cal_int < 3000 ; cal_int ++){                  //Run this code 2000 times
+  for (int cal_int = 0; cal_int < 2000 ; cal_int ++){                  //Run this code 2000 times
     read_mpu_6050_data();                                              //Read the raw acc and gyro data from the MPU-6050
     gyro_x_cal += gyro_x;                                              //Add the gyro x-axis offset to the gyro_x_cal variable
     gyro_y_cal += gyro_y;                                              //Add the gyro y-axis offset to the gyro_y_cal variable
@@ -283,14 +306,16 @@ void setup() {
     delay(3);                                                          //Delay 3us to simulate the 250Hz program loop
   }
 
-  gyro_x_cal /= 3000;                                                  //Divide the gyro_x_cal variable by 2000 to get the avarage offset
-  gyro_y_cal /= 3000;                                                  //Divide the gyro_y_cal variable by 2000 to get the avarage offset
-  gyro_z_cal /= 3000;                                                  //Divide the gyro_z_cal variable by 2000 to get the avarage offset
-  angle_roll_cal /= 3000;
-  angle_pitch_cal /= 3000;
+  gyro_x_cal /= 2000;                                                  //Divide the gyro_x_cal variable by 2000 to get the avarage offset
+  gyro_y_cal /= 2000;                                                  //Divide the gyro_y_cal variable by 2000 to get the avarage offset
+  gyro_z_cal /= 2000;                                                  //Divide the gyro_z_cal variable by 2000 to get the avarage offset
+  angle_roll_cal /= 2000;
+  angle_pitch_cal /= 2000;
   
   Serial.println("Gyro Calibration Done");
   Serial.println();
+  bluetoothSerial.println("Gyro Calibration Done");
+  bluetoothSerial.println();
 
   delay(1000); 
 
@@ -351,25 +376,33 @@ void loop(){
   Serial.print(angle_yaw);
   Serial.print("\n");
 */
+/*
   bluetoothSerial.print(angle_pitch_output);
   bluetoothSerial.print("; ");
   bluetoothSerial.print(angle_roll_output);
   bluetoothSerial.print("; ");
   bluetoothSerial.print(angle_yaw);
-  bluetoothSerial.print("\n");
+  bluetoothSerial.print("\n"); */
 
   pid_update();
 
   pid_output();
   
   motor_set_thrust(fr_speed, fl_speed, br_speed, bl_speed);
-
+/*
   if (bluetoothSerial.available()) {
     Serial.write(bluetoothSerial.read());
   }
   if (Serial.available()) {
     bluetoothSerial.write(Serial.read());
-  }
+  }*/
+
+  // Change PID Values mid flight
+  if(check_PID()){}
+
+  bluetoothSerial.println(Kp);
+  bluetoothSerial.println(Ki);
+  bluetoothSerial.println(Kd);
 
   while(millis() - loop_timer < 4);                                 //Wait until the loop_timer reaches 4000us (250Hz) before starting the next loop
   loop_timer = millis();                                               //Reset the loop timer
