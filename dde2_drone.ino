@@ -1,5 +1,8 @@
 #include <Wire.h>
 #include <Servo.h>
+#include <SoftwareSerial.h>
+
+SoftwareSerial bluetoothSerial(2, 3); // RX, TX Pins des HC-05 Moduls
 
 //Declaring some global variables
 //gyro
@@ -46,6 +49,7 @@ float loop_timer;
 float elapsedTime, time, timePrev;
 
 float angle_pitch, angle_roll, angle_yaw;
+float angle_roll_acc, angle_pitch_acc;
 
 Servo fr_prop;
 Servo fl_prop;
@@ -61,9 +65,9 @@ float fr_speed, br_speed, fl_speed, bl_speed;
 
 
 //int angle_pitch_buffer, angle_roll_buffer;
-//boolean set_gyro_angles;
-//float angle_roll_acc, angle_pitch_acc;
-//float angle_pitch_output, angle_roll_output;
+boolean set_gyro_angles;
+float angle_roll_cal, angle_pitch_cal;
+float angle_pitch_output, angle_roll_output;
 
 //Subroutine for reading the raw gyro and accelerometer data
 void read_mpu_6050_data(){                                             
@@ -104,7 +108,7 @@ void setup_mpu_6050_registers(){
 
 void pid_update(){
 
-  error_pitch = angle_pitch;
+  error_pitch = angle_pitch_output;
   integral_pitch += error_pitch; 
   derivative_pitch = (error_pitch - lastError_pitch)/elapsedTime;
   lastError_pitch = error_pitch;
@@ -115,7 +119,7 @@ void pid_update(){
   Serial.print(", ");
   Serial.println(derivative_pitch);*/
 
-  error_roll = angle_roll;
+  error_roll = angle_roll_output;
   integral_roll += error_roll;
   derivative_roll = (error_roll - lastError_roll)/elapsedTime;
   lastError_roll = error_roll;
@@ -149,6 +153,7 @@ void pid_output() {
 void set_pid_constants() {
 
   Serial.println("Please set PID Constants (Kp;Ki;Kd)");
+  bluetoothSerial.println("Please set PID Constants (Kp;Ki;Kd)");
   check = true;
 
   while (check){
@@ -176,6 +181,11 @@ void set_pid_constants() {
       Serial.println("Ki: " + String(Ki));
       Serial.println("Kd: " + String(Kd));
       Serial.println();
+
+      bluetoothSerial.println("Kp: " + String(Kp));
+      bluetoothSerial.println("Ki: " + String(Ki));
+      bluetoothSerial.println("Kd: " + String(Kd));
+      bluetoothSerial.println();
 
       check = false;
     }
@@ -227,13 +237,14 @@ void motor_set_thrust(float fr, float fl, float br, float bl){
   br_prop.writeMicroseconds(br);
   bl_prop.writeMicroseconds(bl);
 
+/*
   Serial.print(fr);
   Serial.print(", ");
   Serial.print(fl);
   Serial.print(", ");
   Serial.print(br);
   Serial.print(", ");
-  Serial.println(bl);
+  Serial.println(bl);*/
 
 
 }
@@ -245,6 +256,11 @@ void setup() {
   Wire.begin();                                                        //Start I2C as master
   
   Serial.begin(57600);                                                 //Use only for debugging
+  bluetoothSerial.begin(9600); // Serielle Kommunikation mit dem HC-05 Modul
+  delay(1000); // Warte eine Sekunde, um sicherzustellen, dass das Modul initialisiert ist
+
+  // Befehl zum Ändern der Baudrate senden
+  bluetoothSerial.print("AT+UART=57600,0,0\r\n");
 
   setup_mpu_6050_registers();                                          //Setup the registers of the MPU-6050 (500dfs / +/-8g) and start the gyro
   
@@ -254,26 +270,29 @@ void setup() {
   Serial.println("Start Gyro Calibration");
   Serial.println();
   
-  for (int cal_int = 0; cal_int < 2000 ; cal_int ++){                  //Run this code 2000 times
+  for (int cal_int = 0; cal_int < 3000 ; cal_int ++){                  //Run this code 2000 times
     read_mpu_6050_data();                                              //Read the raw acc and gyro data from the MPU-6050
     gyro_x_cal += gyro_x;                                              //Add the gyro x-axis offset to the gyro_x_cal variable
     gyro_y_cal += gyro_y;                                              //Add the gyro y-axis offset to the gyro_y_cal variable
     gyro_z_cal += gyro_z;                                              //Add the gyro z-axis offset to the gyro_z_cal variable
+    acc_total_vector = sqrt((acc_x*acc_x)+(acc_y*acc_y)+(acc_z*acc_z));  //Calculate the total accelerometer vector
+    angle_pitch_acc = asin((float)acc_y/acc_total_vector)* 57.296;       //Calculate the pitch angle
+    angle_roll_acc = asin((float)acc_x/acc_total_vector)* -57.296;       //Calculate the roll angle
+    angle_roll_cal += angle_roll_acc;
+    angle_pitch_cal += angle_pitch_acc;
     delay(3);                                                          //Delay 3us to simulate the 250Hz program loop
   }
 
-  gyro_x_cal /= 2000;                                                  //Divide the gyro_x_cal variable by 2000 to get the avarage offset
-  gyro_y_cal /= 2000;                                                  //Divide the gyro_y_cal variable by 2000 to get the avarage offset
-  gyro_z_cal /= 2000;                                                  //Divide the gyro_z_cal variable by 2000 to get the avarage offset
+  gyro_x_cal /= 3000;                                                  //Divide the gyro_x_cal variable by 2000 to get the avarage offset
+  gyro_y_cal /= 3000;                                                  //Divide the gyro_y_cal variable by 2000 to get the avarage offset
+  gyro_z_cal /= 3000;                                                  //Divide the gyro_z_cal variable by 2000 to get the avarage offset
+  angle_roll_cal /= 3000;
+  angle_pitch_cal /= 3000;
   
   Serial.println("Gyro Calibration Done");
   Serial.println();
 
   delay(1000); 
-
-  //m.attach(); 
-  //m.startup();
-  //m.setThrust(1100);
 
   motor_startup();
 
@@ -300,35 +319,15 @@ void loop(){
   //0.0000611 = 1 / (250Hz / 65.5)
   angle_pitch += gyro_x * 0.0000611;                                   //Calculate the traveled pitch angle and add this to the angle_pitch variable
   angle_roll += gyro_y * 0.0000611;                                    //Calculate the traveled roll angle and add this to the angle_roll variable
-  //angle_yaw = gyro_z * 0.0000611;
-  angle_yaw = 0;                                
-  /*Serial.print(angle_pitch);
-  Serial.print(", ");
-  Serial.print(angle_roll);
-  Serial.print(", ");
-  Serial.println(angle_yaw);*/
+  angle_yaw += gyro_z * 0.0000611; 
 
-  pid_update();
-
-  pid_output();
-  
-  motor_set_thrust(fr_speed, fl_speed, br_speed, bl_speed);
-
-  
-  /*
-  //0.000001066 = 0.0000611 * (3.142(PI) / 180degr) The Arduino sin function is in radians
-  angle_pitch += angle_roll * sin(gyro_z * 0.000001066);               //If the IMU has yawed transfer the roll angle to the pitch angel
-  angle_roll -= angle_pitch * sin(gyro_z * 0.000001066);               //If the IMU has yawed transfer the pitch angle to the roll angel
-  
-  //Accelerometer angle calculations
   acc_total_vector = sqrt((acc_x*acc_x)+(acc_y*acc_y)+(acc_z*acc_z));  //Calculate the total accelerometer vector
   //57.296 = 1 / (3.142 / 180) The Arduino asin function is in radians
   angle_pitch_acc = asin((float)acc_y/acc_total_vector)* 57.296;       //Calculate the pitch angle
   angle_roll_acc = asin((float)acc_x/acc_total_vector)* -57.296;       //Calculate the roll angle
-  
-  //Place the MPU-6050 spirit level and note the values in the following two lines for calibration
-  angle_pitch_acc -= 0.0;                                              //Accelerometer calibration value for pitch
-  angle_roll_acc -= 0.0;                                               //Accelerometer calibration value for roll
+
+  angle_pitch_acc -= angle_pitch_cal;                                  //Accelerometer calibration value for pitch
+  angle_roll_acc -= angle_roll_cal;                                    //Accelerometer calibration value for roll
 
   if(set_gyro_angles){                                                 //If the IMU is already started
     angle_pitch = angle_pitch * 0.9996 + angle_pitch_acc * 0.0004;     //Correct the drift of the gyro pitch angle with the accelerometer pitch angle
@@ -339,12 +338,39 @@ void loop(){
     angle_roll = angle_roll_acc;                                       //Set the gyro roll angle equal to the accelerometer roll angle 
     set_gyro_angles = true;                                            //Set the IMU started flag
   }
-  
+
   //To dampen the pitch and roll angles a complementary filter is used
   angle_pitch_output = angle_pitch_output * 0.9 + angle_pitch * 0.1;   //Take 90% of the output pitch value and add 10% of the raw pitch value
   angle_roll_output = angle_roll_output * 0.9 + angle_roll * 0.1;      //Take 90% of the output roll value and add 10% of the raw roll value
+
+/*
+  Serial.print(angle_pitch_output);
+  Serial.print("; ");
+  Serial.print(angle_roll_output);
+  Serial.print("; ");
+  Serial.print(angle_yaw);
+  Serial.print("\n");
+*/
+  bluetoothSerial.print(angle_pitch_output);
+  bluetoothSerial.print("; ");
+  bluetoothSerial.print(angle_roll_output);
+  bluetoothSerial.print("; ");
+  bluetoothSerial.print(angle_yaw);
+  bluetoothSerial.print("\n");
+
+  pid_update();
+
+  pid_output();
   
-  */
+  motor_set_thrust(fr_speed, fl_speed, br_speed, bl_speed);
+
+  if (bluetoothSerial.available()) {
+    Serial.write(bluetoothSerial.read());
+  }
+  if (Serial.available()) {
+    bluetoothSerial.write(Serial.read());
+  }
+
   while(millis() - loop_timer < 4);                                 //Wait until the loop_timer reaches 4000us (250Hz) before starting the next loop
   loop_timer = millis();                                               //Reset the loop timer
 }
