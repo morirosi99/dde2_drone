@@ -43,10 +43,12 @@ float Kp=0;
 // 
 bool check;
 
-int temperature;
-float loop_timer;
+int counter, fail_counter;
 
-float elapsedTime, time, timePrev;
+int temperature;
+unsigned long loop_timer, motor_timer;
+
+unsigned long elapsedTime, time_millis, time_micros, timePrev;
 
 float angle_pitch, angle_roll, angle_yaw;
 float angle_roll_acc, angle_pitch_acc;
@@ -56,7 +58,7 @@ Servo fl_prop;
 Servo br_prop;
 Servo bl_prop;
 
-float thrust = 1150;
+float thrust = 1100;
 
 float fr_contrib, br_contrib, fl_contrib, bl_contrib;
 
@@ -108,7 +110,7 @@ void setup_mpu_6050_registers(){
 
 void pid_update(){
 
-  error_pitch = angle_pitch_output;
+  error_pitch = 0; //angle_pitch_output;
   integral_pitch += error_pitch; 
   derivative_pitch = (error_pitch - lastError_pitch)/elapsedTime;
   lastError_pitch = error_pitch;
@@ -119,12 +121,12 @@ void pid_update(){
   Serial.print(", ");
   Serial.println(derivative_pitch);*/
 
-  error_roll = angle_roll_output;
+  error_roll = 0; //angle_roll_output;
   integral_roll += error_roll;
   derivative_roll = (error_roll - lastError_roll)/elapsedTime;
   lastError_roll = error_roll;
 
-  error_yaw = angle_yaw;
+  error_yaw = 0; //angle_yaw;
   integral_yaw += error_yaw;
   derivative_yaw = (error_yaw - lastError_yaw)/elapsedTime;
   lastError_yaw = error_yaw;
@@ -136,17 +138,16 @@ void pid_output() {
   output_yaw = Kp * error_yaw + Ki * integral_yaw + Kd * derivative_yaw;
 
   // calculate the contribution to the ESCs
-  fr_contrib = output_pitch - output_roll + output_yaw;
+  fr_contrib = -output_pitch + output_roll + output_yaw;
   fr_speed = check_max_min_speed(fr_contrib);
 
-
-  fl_contrib = output_pitch + output_roll - output_yaw;
+  fl_contrib = -output_pitch - output_roll - output_yaw;
   fl_speed = check_max_min_speed(fl_contrib);
 
-  br_contrib = -1*output_pitch - output_roll - output_yaw;
+  br_contrib = output_pitch + output_roll - output_yaw;
   br_speed = check_max_min_speed(br_contrib);
 
-  bl_contrib = -1*output_pitch + output_roll + output_yaw;
+  bl_contrib = output_pitch - output_roll + output_yaw;
   bl_speed = check_max_min_speed(bl_contrib);
 }
 
@@ -165,6 +166,7 @@ void setPID(const String &input) {
   Ki = kiStr.toFloat();
   Kd = kdStr.toFloat();
 
+/*
   Serial.println("Kp: " + String(Kp));
   Serial.println("Ki: " + String(Ki));
   Serial.println("Kd: " + String(Kd));
@@ -173,7 +175,7 @@ void setPID(const String &input) {
   bluetoothSerial.println("Kp: " + String(Kp));
   bluetoothSerial.println("Ki: " + String(Ki));
   bluetoothSerial.println("Kd: " + String(Kd));
-  bluetoothSerial.println();
+  bluetoothSerial.println(); */
 }
 
 void set_pid_constants() {
@@ -200,17 +202,13 @@ void set_pid_constants() {
   }
 }
 
-bool check_PID() {
+void check_PID() {
   if (bluetoothSerial.available())
   {
     String input = bluetoothSerial.readString();
-    //Serial.print(input);
     bluetoothSerial.println();
     setPID(input);
-    return true;
   }
-  else
-  {return false;}
 }
 
 void motor_startup(){
@@ -284,7 +282,7 @@ void setup() {
   bluetoothSerial.print("AT+UART=57600,0,0\r\n");
 
   setup_mpu_6050_registers();                                          //Setup the registers of the MPU-6050 (500dfs / +/-8g) and start the gyro
-  
+
   set_pid_constants();
  
   // Gyro Calibration
@@ -323,15 +321,28 @@ void setup() {
 
   delay(3000);
 
-  time = millis();  
-  loop_timer = millis();                                           //Reset the loop timer
+  time_millis = millis(); 
+  time_micros = micros(); 
+  loop_timer = micros();                                           //Reset the loop timer
+  counter = 0;
 }
 
 // LOOP
 void loop(){
-  timePrev = time;  // the previous time is stored before the actual time read
-  time = millis();  // actual time read
-  elapsedTime = (time - timePrev) / 1000;
+  timePrev = time_micros;  // the previous time is stored before the actual time read
+  time_micros = micros();  // actual time read
+  elapsedTime = (time_micros - timePrev) / 1000000;
+
+  if (elapsedTime > 4000)
+  {
+    bluetoothSerial.println("Program to slow - less than 4Hz");
+    fail_counter += 1;
+    if (fail_counter%10 == 0){
+      delay(1000);
+    }
+  }
+  while(micros() - loop_timer < 4000);  
+  loop_timer = micros(); 
   
   read_mpu_6050_data();                                                //Read the raw acc and gyro data from the MPU-6050
 
@@ -339,7 +350,6 @@ void loop(){
   gyro_y -= gyro_y_cal;                                                //Subtract the offset calibration value from the raw gyro_y value
   gyro_z -= gyro_z_cal;                                                //Subtract the offset calibration value from the raw gyro_z value
   
-
   //Gyro angle calculations
   //0.0000611 = 1 / (250Hz / 65.5)
   angle_pitch += gyro_x * 0.0000611;                                   //Calculate the traveled pitch angle and add this to the angle_pitch variable
@@ -367,7 +377,6 @@ void loop(){
   //To dampen the pitch and roll angles a complementary filter is used
   angle_pitch_output = angle_pitch_output * 0.9 + angle_pitch * 0.1;   //Take 90% of the output pitch value and add 10% of the raw pitch value
   angle_roll_output = angle_roll_output * 0.9 + angle_roll * 0.1;      //Take 90% of the output roll value and add 10% of the raw roll value
-
 /*
   Serial.print(angle_pitch_output);
   Serial.print("; ");
@@ -386,9 +395,26 @@ void loop(){
 
   pid_update();
 
-  pid_output();
-  
+  pid_output(); 
+
+  if (counter%5 == 0) // every 20ms
+  {
   motor_set_thrust(fr_speed, fl_speed, br_speed, bl_speed);
+  }
+  
+  if (counter&100 == 0) // every 400ms
+  {
+  bluetoothSerial.print(fr_speed);
+  bluetoothSerial.print("; ");
+  bluetoothSerial.print(fl_speed);
+  bluetoothSerial.print("; ");
+  bluetoothSerial.print(br_speed);
+  bluetoothSerial.print("; ");
+  bluetoothSerial.print(bl_speed);
+  bluetoothSerial.print("\n ");
+  }
+
+
 /*
   if (bluetoothSerial.available()) {
     Serial.write(bluetoothSerial.read());
@@ -398,14 +424,17 @@ void loop(){
   }*/
 
   // Change PID Values mid flight
-  if(check_PID()){}
 
+  if(counter%250 == 0) //check every second
+  {
+    check_PID();
+  }
+/*
   bluetoothSerial.println(Kp);
   bluetoothSerial.println(Ki);
-  bluetoothSerial.println(Kd);
+  bluetoothSerial.println(Kd);*/
 
-  while(millis() - loop_timer < 4);                                 //Wait until the loop_timer reaches 4000us (250Hz) before starting the next loop
-  loop_timer = millis();                                               //Reset the loop timer
+  counter++;
 }
 
 
